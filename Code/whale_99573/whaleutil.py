@@ -74,34 +74,42 @@ def lumin(im):
 
 def colorlumin(im, colorthresh):
     #diff = rgb2hsv(im)
-    import matplotlib.pyplot as plt
     #diff = diff[:, :, 0]#
+    im = np.array(im).astype('float')
     diff = 2 * im[:, :, 0] - im[:, :, 1] - im[:, :, 2]
-    invdiff = diff.max() / diff
-    uhoh = invdiff * 0 != 0
-    invdiff[uhoh] = 0
-    invdiff = gaussian_filter(invdiff, 2)
-    imcolor = invdiff.copy()
+    #invdiff = diff.max() / diff
+    #uhoh = invdiff * 0 != 0
+    #invdiff[uhoh] = 0
+    #invdiff = gaussian_filter(diff, 2)
+    imcolor = diff.copy()
 
     diff = rgb2gray(im)
     imlumin = diff.copy()
     imlumin /= imlumin.max()
+    #import matplotlib.pyplot as plt
     #plt.imshow(imlumin)
     #plt.colorbar()
     #plt.show()
 
     # mask regions with a strong wave signature
-    waveindex = imlumin > 0.8
-    imcolor[waveindex] = 0
+    waveindex = imlumin > 0.9
+    imcolor[waveindex] = imcolor.min()
+    #plt.imshow(imcolor)
+    #plt.colorbar()
+    #plt.show()
 
     # first guess at whale region
+    #import matplotlib.pyplot as plt
     #plt.imshow(imcolor)
     #plt.colorbar()
     #plt.show()
     hicol = imcolor >= colorthresh
-    imcolor[hicol] = colorthresh
+    imcolor[hicol] = np.abs(colorthresh)
     locol = imcolor < colorthresh
     imcolor[locol] = 0.
+    #plt.imshow(imcolor)
+    #plt.colorbar()
+    #plt.show()
     #print(smallim.mean())
 
     return (imcolor, imlumin)

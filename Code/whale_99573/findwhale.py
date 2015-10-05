@@ -17,7 +17,7 @@ import whaleutil
 
 
 
-def lnprior(pzero):
+def lnprior(pzero, xylim):
     # penalty for size being too small or too large
     #size = np.sqrt(pzero[5] ** 2 + pzero[1] ** 2)
     #expectedsize = 600/4
@@ -26,11 +26,11 @@ def lnprior(pzero):
     if pzero[1] > 1200/4 or pzero[1] < 300/4:
         #print('pzero1')
         lp = -np.inf
-    if pzero[2] - 0.25*pzero[1] < 0 or pzero[2] + 0.25*pzero[1] > nx:
+    if pzero[2] < xylim[0] or pzero[2] > xylim[1]:
         #print('pzero2')
         lp = -np.inf
-    if pzero[3] - 0.25*pzero[1] < 0 or pzero[3] + 0.25*pzero[1] > ny:
         #print('pzero3')
+    if pzero[3] < xylim[2] or pzero[3] > xylim[3]:
         lp = -np.inf
     if pzero[4] < 0.1 or pzero[4] > 1:
         #print('pzero4')
@@ -49,6 +49,7 @@ def lnlike(pzero, imcolor, imluminmask, x, y):
     ycenter = pzero[3]
     aspect_ratio = pzero[4]
     if xcenter < 0 or ycenter < 0 or xcenter > nx or ycenter > ny:
+        print(xcenter, ycenter)
         return -np.inf
     #height = width * aspect_ratio
     #height = pzero[3]
@@ -89,9 +90,9 @@ def lnlike(pzero, imcolor, imluminmask, x, y):
     return -cost
 
 
-def lnprob(pzero, imcolor, imluminmask, x, y):
+def lnprob(pzero, imcolor, imluminmask, x, y, xylim):
     likeln = lnlike(pzero, imcolor, imluminmask, x, y)
-    priorln = lnprior(pzero)
+    priorln = lnprior(pzero, xylim)
     #if likeln > -3e3:
     #print(likeln, priorln, pzero)
     return likeln + priorln
@@ -104,7 +105,7 @@ pool = ''
 nwalkers = 128
 nparams = 6
 
-whaleid = 'w_2234.jpg'
+whaleid = 'w_4947.jpg'
 im3 = imread(whaleid)
 diffim = 2 * im3[:, :, 0] - im3[:, :, 1] - im3[:, :, 2]
 diffim = diffim.max() / diffim
@@ -116,14 +117,14 @@ print(diffim.mean())
 
 from scipy.misc import imresize
 rebin = 4.0
-nx, ny = diffim.shape
+ny, nx = diffim.shape
 #print(nx, ny)
-smallim = np.zeros((nx/rebin, ny/rebin, 3))
+smallim = np.zeros((ny/rebin, nx/rebin, 3))
 for i in range(3):
     smallim[:, :, i] = imresize(im3[:, :, i], 1/rebin)
 
 # get the color and luminesence of the binned RGB image
-colorthresh = 5.0
+colorthresh = -60.0
 imcolor, imlumin = whaleutil.colorlumin(smallim, colorthresh)
 
 imluminmask = imlumin < 0.8
@@ -138,32 +139,43 @@ imluminmask = imlumin < 0.8
 #imcolor[toolow] = 0.
 #print(smallim.mean())
 
-nx, ny = imcolor.shape
+ny, nx = imcolor.shape
 #print(nx, ny)
 xvec = np.arange(nx)
 yvec = np.arange(ny)
-x, y = np.meshgrid(yvec, xvec)
+x, y = np.meshgrid(xvec, yvec)
+#import matplotlib.pyplot as plt
+#plt.imshow(x)
+#plt.show()
+#plt.imshow(y)
+#plt.show()
 
-hicol = imcolor >= colorthresh
+hicol = imcolor > 0
 xguess = x[hicol].mean()
 yguess = y[hicol].mean()
+dguess = 100
+xylim = (xguess-dguess, xguess + dguess, yguess - dguess, yguess + dguess)
 rguess = 100.#np.sqrt(imcolor[hicol].size / np.pi)
 print(xguess*4, yguess*4, rguess*4)
 
+#plt.imshow(imcolor)
+#plt.colorbar()
+#plt.plot([xguess], [yguess], 'o')
+#plt.show()
 sampler = emcee.EnsembleSampler(nwalkers, nparams, lnprob, \
-    args=[imcolor, imluminmask, x, y], threads=Nthreads)
+    args=[imcolor, imluminmask, x, y, xylim], threads=Nthreads)
 
 
 # initialize with rectangles located within the inner quadrant
 ylength, xlength = diffim.shape
 #print(ylength, xlength)
-fluxinit = np.random.uniform(colorthresh, colorthresh, nwalkers)
-sizeinit = np.random.uniform(0.9*rguess, 1.1*rguess, nwalkers)
+fluxinit = np.random.uniform(np.abs(colorthresh), np.abs(colorthresh), nwalkers)
+sizeinit = np.random.uniform(0.8*rguess, 1.5*rguess, nwalkers)
 #sizeinit[::2] *= -1
 #np.random.shuffle(sizeinit)
 #heightinit = np.random.uniform(100, 700, nwalkers)
-xinit = np.random.uniform(xguess, xguess, nwalkers)
-yinit = np.random.uniform(yguess, yguess, nwalkers)
+xinit = np.random.uniform(xguess-dguess, xguess+dguess, nwalkers)
+yinit = np.random.uniform(yguess-dguess, yguess+dguess, nwalkers)
 arinit = np.random.uniform(0.2, 0.5, nwalkers)
 phiinit = np.random.uniform(0, 180, nwalkers)
 #phiinit[::2] *= -1

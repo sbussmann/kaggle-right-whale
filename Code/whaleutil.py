@@ -72,21 +72,27 @@ def lumin(im):
     diff = im[:, :, 0] + im[:, :, 1] + im[:, :, 2]
     return diff
 
-def colorlumin(im, colorthresh):
+def colorlumin(im):
     #diff = rgb2hsv(im)
     #diff = diff[:, :, 0]#
     im = np.array(im).astype('float')
     diff = 2 * im[:, :, 0] - im[:, :, 1] - im[:, :, 2]
+    print(np.median(diff))
+    imcolor = diff + np.median(diff)
+    colorthresh = np.percentile(imcolor, 97)
+    print("Found color threshold of " + str(colorthresh))
     #invdiff = diff.max() / diff
     #uhoh = invdiff * 0 != 0
     #invdiff[uhoh] = 0
     #invdiff = gaussian_filter(diff, 2)
-    imcolor = diff.copy()
+    #import matplotlib.pyplot as plt
+    #plt.hist(imcolor.flatten(), bins=100)
+    #plt.show()
+    #import pdb; pdb.set_trace()
 
     diff = rgb2gray(im)
     imlumin = diff.copy()
     imlumin /= imlumin.max()
-    #import matplotlib.pyplot as plt
     #plt.imshow(imlumin)
     #plt.colorbar()
     #plt.show()
@@ -106,11 +112,11 @@ def colorlumin(im, colorthresh):
     hicol = imcolor >= colorthresh
     imcolor[hicol] = np.abs(colorthresh)
     locol = imcolor < colorthresh
-    imcolor[locol] = 0.
+    imcolor[locol] = colorthresh - 10
     #plt.imshow(imcolor)
     #plt.colorbar()
     #plt.show()
     #print(smallim.mean())
 
-    return (imcolor, imlumin)
+    return (imcolor, imlumin, colorthresh)
 

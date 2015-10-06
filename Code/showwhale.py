@@ -13,6 +13,8 @@ from scipy.ndimage import gaussian_filter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 #import whaleutil
 from skimage.transform import rotate
+import os
+
 
 def gini(list_of_values):
   sorted_list = sorted(list_of_values)
@@ -25,8 +27,9 @@ def gini(list_of_values):
   num = 1 + 1 / n + 2 / n * numer / denom
   return num
 
-whaleid = 'w_4947.jpg'
-df = pd.read_csv('posteriorpdf_' + whaleid + '.csv')
+whaleid = 'w_9393.jpg'
+whalenum = os.path.splitext(whaleid)[0]
+df = pd.read_csv('posteriorpdf_' + whalenum + '.csv')
 
 bestfitloc = df['lnprob'] == df['lnprob'].max()
 
@@ -129,18 +132,19 @@ def differ(im, ch1, ch2):
     return smoothdiff
 
 
-plt. clf()
-imshow(im, origin='lower')
+
+diffim = 2 * im[:, :, 0] - im[:, :, 1] - im[:, :, 2]
+#plt.clf()
+imcolor, imlumin, colorthresh = colorlumin(im)
+plt.clf()
+plt.imshow(imcolor)
 plt.contour(whale_model)
+plt.colorbar()
 
 plt.plot([xhead1], [yhead1], 'o')
 plt.plot([xhead2], [yhead2], 'o')
 
-plt.savefig('whalemodel_' + whaleid + '.png')
-
-#plt.clf()
-colorthresh = 5
-imcolor, imlumin = colorlumin(im, colorthresh)
+plt.savefig('whalemodel_' + whalenum + '.png')
 #imluminmask = imlumin < 0.8
 #imdiff = imcolor - whale_model
 #print(imdiff[imluminmask].sum())
@@ -195,9 +199,10 @@ for i in range(len(xheads)):
     if y1 < 0: y1 = 0 
     if y2 > ny: y2 = ny 
     #print(x1, x2, y1, y2)
-    if y1 < nx and x1 < ny and x2 > 0 and y2 > 0:
+    if y1 < ny and x1 < nx and x2 > 0 and y2 > 0:
         #imhead = imcolor[y1:y2, x1:x2]
         imhead = im[y1:y2, x1:x2, 0] - im[y1:y2, x1:x2, 1]
+        maskhead = imlumin[y1:y2, x1:x2]
         imhead = rotate(imhead, phi0)
         imhead = imhead - rotate(imhead, 180)
         if imhead.min() < mincol01:
@@ -234,14 +239,19 @@ for i in range(len(xheads)):
 
 
         #axarr[row, col].text(30,70, str(maxmark))
-        ylow = nyhead * 1 / 4
-        yhigh = nyhead * 3 / 4
-        asymmetry = np.abs(imhead[ylow:yhigh,:]).sum()
+        ylow = int(nyhead * 1.5 / 4)
+        yhigh = int(nyhead * 2.5 / 4)
+        npixels = (yhigh - ylow) * nxhead
+        maskbar = maskhead[ylow:yhigh, :]
+        imbar = imhead[ylow:yhigh,:]
+        notmasked = maskbar < 0.9
+        asymmetry = np.abs(imbar[notmasked]).sum() / np.float(npixels)
         if asymmetry > maxasymm:
             besti = i
             bestx = xheads[besti]
             besty = yheads[besti]
-        axarr[row, col].text(30,70, str())
+            maxasymm = asymmetry
+        axarr[row, col].text(30,70, str(asymmetry))
         #imsave('whalecut_' + whaleid + str(i) + '.png', imhead)
     col += 1
 
@@ -250,11 +260,12 @@ y2 = yheads[besti] + headradius
 x1 = xheads[besti] - headradius
 x2 = xheads[besti] + headradius
 imhead = im[y1:y2, x1:x2, 0] - im[y1:y2, x1:x2, 1]
+imhead += np.median(imhead)
 #plt.clf()
 #plt.imshow(imhead)
 #plt.colorbar()
 #plt.show()
-maxmark = np.median(imhead) * 3000
+maxmark = 0
 for ix in range(nxhead/4, nxhead/4*3):
     for iy in range(nyhead/4, nyhead/4*3):
         #par = [flux, headsize, ix, iy, headq, phi0]
@@ -264,6 +275,7 @@ for ix in range(nxhead/4, nxhead/4*3):
         x2 = ix + 50
         y1 = iy - 15
         y2 = iy + 15
+        import pdb; pdb.set_trace()
         imheadsum = imhead[y1:y2, x1:x2].sum()
         if imheadsum > maxmark:
             maxmark = imheadsum
@@ -276,9 +288,9 @@ for ix in range(nxhead/4, nxhead/4*3):
 
 fig = plt.gcf()
 fig.set_size_inches(14.5, 10.5)
-plt.savefig('whalecutscolor01' + whaleid + '.png')
+plt.savefig('whalecutscolor01' + whalenum + '.png')
 
-print(xmark, ymark)
+print(besti, xmark, ymark)
 y1 = besty + ymark - nyhead / 2 - headradius
 y2 = besty + ymark - nyhead / 2 + headradius
 x1 = bestx + xmark - nxhead / 2 - headradius
@@ -288,6 +300,6 @@ imhead = imhead.astype('uint8')
 plt.clf()
 imshow(imhead)
 imsave('whalehead' + whaleid, imhead)
-plt.savefig('whalehead' + whaleid + '.png')
+plt.savefig('whalehead' + whalenum + '.png')
 import pdb; pdb.set_trace()
 

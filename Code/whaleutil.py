@@ -9,8 +9,20 @@ Find the whale.  Model the whale as a rectangle with aspect ratio = 3.0.
 """
 
 import numpy as np
-from skimage.color import rgb2gray, rgb2hsv
-from scipy.ndimage import gaussian_filter
+from skimage.color import rgb2gray#, rgb2hsv
+from scipy.ndimage import gaussian_filter, median_filter
+#from scipy.ndimage.fourier import fourier_uniform
+#from scipy.signal import butter, lfilter, freqz
+#import matplotlib.pyplot as plt
+
+
+#def lowpass(im):
+#    xvec = np.linspace(-5,5, 20)
+#    yvec = np.linspace(-5,5, 20)
+#    xv, yv = np.meshgrid(xvec, yvec)
+#    dist = np.sqrt(xv **2 + yv ** 2)
+#    kernel = np.sinc(dist)
+#    return np.convolve(im, kernel)
 
 def xy_rotate(x, y, x0, y0, phi):
     phirad = np.deg2rad(phi)
@@ -77,9 +89,19 @@ def colorlumin(im):
     #diff = diff[:, :, 0]#
     im = np.array(im).astype('float')
     diff = 2 * im[:, :, 0] - im[:, :, 1] - im[:, :, 2]
+    import matplotlib.pyplot as plt
+    #plt.imshow(diff)
+    #plt.colorbar()
+    #plt.show()
+    filtereddiff = median_filter(diff, size=5)
+    diff = filtereddiff
+    #plt.imshow(filtereddiff)
+    #plt.colorbar()
+    #plt.show()
+    #import pdb; pdb.set_trace()
     print(np.median(diff))
-    imcolor = diff + np.median(diff)
-    colorthresh = np.percentile(imcolor, 97)
+    imcolor = diff - np.median(diff)
+    colorthresh = np.percentile(imcolor, 95)
     print("Found color threshold of " + str(colorthresh))
     #invdiff = diff.max() / diff
     #uhoh = invdiff * 0 != 0
@@ -90,33 +112,39 @@ def colorlumin(im):
     #plt.show()
     #import pdb; pdb.set_trace()
 
-    diff = rgb2gray(im)
-    imlumin = diff.copy()
+    imlumin = rgb2gray(im)
     imlumin /= imlumin.max()
+    luminthresh = np.percentile(imlumin, 97)
+    print("Found lumin threshold of " + str(luminthresh))
+    import matplotlib.pyplot as plt
     #plt.imshow(imlumin)
     #plt.colorbar()
     #plt.show()
 
     # mask regions with a strong wave signature
-    waveindex = imlumin > 0.9
+    waveindex = imlumin > luminthresh
     imcolor[waveindex] = imcolor.min()
-    #plt.imshow(imcolor)
-    #plt.colorbar()
-    #plt.show()
 
     # first guess at whale region
-    #import matplotlib.pyplot as plt
-    #plt.imshow(imcolor)
-    #plt.colorbar()
-    #plt.show()
+    plt.imshow(imcolor)
+    plt.colorbar()
+    plt.title('Before processing')
+    plt.show()
+    xval, yval = np.histogram(imcolor.flatten(), bins=50)
+    import pdb; pdb.set_trace()
+    plt.hist(imcolor.flatten(), bins=50)
+    plt.show()
     hicol = imcolor >= colorthresh
     imcolor[hicol] = np.abs(colorthresh)
     locol = imcolor < colorthresh
     imcolor[locol] = colorthresh - 10
-    #plt.imshow(imcolor)
-    #plt.colorbar()
-    #plt.show()
+    imcolor = gaussian_filter(imcolor, 2)
+    plt.clf()
+    plt.imshow(imcolor)
+    plt.colorbar()
+    plt.title('After processing')
+    plt.show()
     #print(smallim.mean())
 
-    return (imcolor, imlumin, colorthresh)
+    return (imcolor, imlumin, colorthresh, luminthresh)
 

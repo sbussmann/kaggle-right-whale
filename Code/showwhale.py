@@ -38,12 +38,12 @@ for whaledir in whaledirs:
     print(whaledir)
     os.chdir(whaledir)
     imageids = glob('w_*.jpg')
-    for imageid in imageids[0:2]:
-        if imageid == 'w_3781.jpg':
-            continue
+    for imageid in imageids:
+        #if imageid == 'w_3781.jpg':
+        #    continue
         print(imageid)
         imagenum = os.path.splitext(imageid)[0]
-        df = pd.read_csv('posteriorpdf_rebin_' + imagenum + '.csv')
+        df = pd.read_csv('posteriorpdf_rebin16_64walkers_' + imagenum + '.csv')
 
         bestfitloc = df['lnprob'] == df['lnprob'].max()
 
@@ -58,7 +58,7 @@ for whaledir in whaledirs:
                 'aspect_ratio', 'rotation_angle']
         par = bestfit[parcols]
 
-        binned = 8
+        binned = 16
 
         par['size'] *= binned
         par['xcenter'] *= binned

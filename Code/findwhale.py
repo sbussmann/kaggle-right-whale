@@ -50,7 +50,7 @@ def lnlike(pzero, imcolor, imluminmask, x, y):
     ycenter = pzero[3]
     aspect_ratio = pzero[4]
     if xcenter < 0 or ycenter < 0 or xcenter > nx or ycenter > ny:
-        print("Bad location: {} {}".format(xcenter, ycenter))
+        #print("Bad location: {} {}".format(xcenter, ycenter))
         return -np.inf
     #height = width * aspect_ratio
     #height = pzero[3]
@@ -103,14 +103,14 @@ Nthreads = 1
 
 pool = ''
 
-nwalkers = 128
+nwalkers = 64
 nparams = 6
-rebin = 8.0
+rebin = 16.0
 
 cwd = os.getcwd()
 datadir = '../../BigData/kaggle-right-whale/right_whale_hunt/imgs/'
 whaledirs = glob(datadir + 'whale_*')
-whaledirs = whaledirs[0:]
+whaledirs = whaledirs
 for whaledir in whaledirs:
     os.chdir(whaledir)
     whaleids = glob('w_*.jpg')
@@ -205,34 +205,45 @@ for whaledir in whaledirs:
 
         cols = ['lnprob', 'fluxinit', 'size', 'xcenter', 'ycenter', \
                 'aspect_ratio', 'rotation_angle']
-        dfdict = {'lnprob': [], 'xcenter': [], 'ycenter': [], 'size': [], 
-                'aspect_ratio': [], 'fluxinit': [], 'rotation_angle': []}
+        dfdict = {}#{'lnprob': [], 'xcenter': [], 'ycenter': [], 'size': [], 
+                #'aspect_ratio': [], 'fluxinit': [], 'rotation_angle': []}
         dfposterior = pd.DataFrame(dfdict)
 
         # pos is the position of the sampler
         # prob the ln probability
         # state the random number generator state
         # amp the metadata 'blobs' associated with the current position
-        for pos, prob, state in sampler.sample(pzero, iterations=100):
+        counter = 0
+        for pos, prob, state in sampler.sample(pzero, iterations=200):
 
-            print("Mean acceptance fraction: {:5.3f}\n".
-                    format(np.mean(sampler.acceptance_fraction)), 
-                    "Mean lnprob and Max lnprob values: {:8.2f} {:8.2f}\n".
-                    format(np.mean(prob), np.max(prob)),
-                    #"\nModel parameters: {:f} {:f} {:f} {:f}".
-                    #format(np.mean(pos, axis=0)),
-                    "\nTime to run previous set of walkers (seconds): {:6.3f}".
-                    format(time.time() - currenttime))
+            if counter % 50 == 0:
+                print("Mean acceptance fraction: {:5.3f}".
+                        format(np.mean(sampler.acceptance_fraction))) 
+                print("Mean lnprob and Max lnprob values: {:8.2f} {:8.2f}".
+                        format(np.mean(prob), np.max(prob)))
+                        #"\nModel parameters: {:f} {:f} {:f} {:f}".
+                        #format(np.mean(pos, axis=0)),
+                print("Time to run previous set of walkers (seconds): {:6.3f}".
+                        format(time.time() - currenttime))
             currenttime = time.time()
             #ff.write(str(prob))
             superpos = np.zeros((1, 1 + nparams,))
+            dfpdf = pd.DataFrame({})
+            dfpdf['lnprob'] = prob
+            dfpdf['fluxinit'] = pos[:, 0]
+            dfpdf['size'] = pos[:, 1]
+            dfpdf['xcenter'] = pos[:, 2]
+            dfpdf['ycenter'] = pos[:, 3]
+            dfpdf['aspect_ratio'] = pos[:, 4]
+            dfpdf['rotation_angle'] = pos[:, 5]
 
-            for wi in range(nwalkers):
-                superpos[0, 0] = prob[wi]
-                superpos[0, 1:nparams + 1] = pos[wi]
-                dfsuperpos = pd.DataFrame(superpos)
-                dfsuperpos.columns = cols
-                dfposterior = dfposterior.append(dfsuperpos)
-        dfposterior.to_csv('posteriorpdf_rebin_' + whalenum + '.csv')
+            #for wi in range(nwalkers):
+            #    superpos[0, 0] = prob[wi]
+            #    superpos[0, 1:nparams + 1] = pos[wi]
+            #    dfsuperpos = pd.DataFrame(superpos)
+            #    dfsuperpos.columns = cols
+            dfposterior = dfposterior.append(dfpdf)
+            counter += 1
+        dfposterior.to_csv('posteriorpdf_rebin16_64walkers_' + whalenum + '.csv')
     os.chdir(cwd)
 

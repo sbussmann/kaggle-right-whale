@@ -78,7 +78,7 @@ def colorlumin(im):
     im = np.array(im).astype('float')
     diff = 2 * im[:, :, 0] - im[:, :, 1] - im[:, :, 2]
     print(np.median(diff))
-    imcolor = diff + np.median(diff)
+    imcolor = diff - np.median(diff)
     colorthresh = np.percentile(imcolor, 97)
     print("Found color threshold of " + str(colorthresh))
     #invdiff = diff.max() / diff

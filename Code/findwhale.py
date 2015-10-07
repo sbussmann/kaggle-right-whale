@@ -99,128 +99,140 @@ def lnprob(pzero, imcolor, imluminmask, x, y, xylim):
     return likeln + priorln
 
 
-Nthreads = 2
+Nthreads = 3
 
 pool = ''
 
 nwalkers = 128
 nparams = 6
 
-whaleids = glob('w_*.jpg')
-whaleids = whaleids[-2:]
-print(whaleids)
-for whaleid in whaleids:
-    whalenum = os.path.splitext(whaleid)[0]
-    im3 = imread(whaleid)
-    im3 = np.array(im3).astype('float')
-    diffim = 2 * im3[:, :, 0] - im3[:, :, 1] - im3[:, :, 2]
-    #diffim = diffim.max() / diffim
-    #toohigh = diffim > 5
-    #diffim[toohigh] = 5.
-    #toolow = diffim < 1
-    #diffim[toolow] = 0.
-    #print(diffim.mean())
+cwd = os.getcwd()
+datadir = '../../BigData/kaggle-right-whale/right_whale_hunt/imgs/'
+whaledirs = glob(datadir + 'whale_*')
+whaledirs = whaledirs[7:]
+for whaledir in whaledirs:
+    os.chdir(whaledir)
+    whaleids = glob('w_*.jpg')
+    #whaleids = whaleids[-2:]
+    print(whaledir)
+    print(whaleids)
+    for whaleid in whaleids:
+        print(whaleid)
+        whalenum = os.path.splitext(whaleid)[0]
+        im3 = imread(whaleid)
+        im3 = np.array(im3).astype('float')
+        diffim = 2 * im3[:, :, 0] - im3[:, :, 1] - im3[:, :, 2]
+        #diffim = diffim.max() / diffim
+        #toohigh = diffim > 5
+        #diffim[toohigh] = 5.
+        #toolow = diffim < 1
+        #diffim[toolow] = 0.
+        #print(diffim.mean())
 
-    from scipy.misc import imresize
-    rebin = 4.0
-    ny, nx = diffim.shape
-    #print(nx, ny)
-    smallim = np.zeros((ny/rebin, nx/rebin, 3))
-    for i in range(3):
-        smallim[:, :, i] = imresize(im3[:, :, i], 1/rebin)
+        from scipy.misc import imresize
+        rebin = 4.0
+        ny, nx = diffim.shape
+        #print(nx, ny)
+        smallim = np.zeros((ny/rebin, nx/rebin, 3))
+        for i in range(3):
+            smallim[:, :, i] = imresize(im3[:, :, i], 1/rebin)
 
-    # get the color and luminesence of the binned RGB image
-    #colorthresh = -60.0
-    imcolor, imlumin, colorthresh = whaleutil.colorlumin(smallim)
+        # get the color and luminesence of the binned RGB image
+        #colorthresh = -60.0
+        imcolor, imlumin, colorthresh = whaleutil.colorlumin(smallim)
 
-    imluminmask = imlumin < 0.9
-    # mask regions with a strong wave signature
-    #waveindex = imlumin > 300
-    #imcolor[waveindex] = 0
+        imluminmask = imlumin < 0.9
+        # mask regions with a strong wave signature
+        #waveindex = imlumin > 300
+        #imcolor[waveindex] = 0
 
-    # first guess at whale region
-    #hicol = imcolor >= 5
-    #imcolor[hicol] = 5.
-    #toolow = imcolor < 1
-    #imcolor[toolow] = 0.
-    #print(smallim.mean())
+        # first guess at whale region
+        #hicol = imcolor >= 5
+        #imcolor[hicol] = 5.
+        #toolow = imcolor < 1
+        #imcolor[toolow] = 0.
+        #print(smallim.mean())
 
-    ny, nx = imcolor.shape
-    #print(nx, ny)
-    xvec = np.arange(nx)
-    yvec = np.arange(ny)
-    x, y = np.meshgrid(xvec, yvec)
-    #plt.imshow(x)
-    #plt.show()
-    #plt.imshow(y)
-    #plt.show()
+        ny, nx = imcolor.shape
+        #print(nx, ny)
+        xvec = np.arange(nx)
+        yvec = np.arange(ny)
+        x, y = np.meshgrid(xvec, yvec)
+        #plt.imshow(x)
+        #plt.show()
+        #plt.imshow(y)
+        #plt.show()
 
-    hicol = imcolor > colorthresh - 10
-    xguess = x[hicol].mean()
-    yguess = y[hicol].mean()
-    dguess = 100
-    xylim = (xguess-dguess, xguess + dguess, yguess - dguess, yguess + dguess)
-    rguess = 100.#np.sqrt(imcolor[hicol].size / np.pi)
-    print(xguess*4, yguess*4, rguess*4)
+        hicol = imcolor > colorthresh - 10
+        xguess = x[hicol].mean()
+        yguess = y[hicol].mean()
+        dguess = 400 / rebin
+        xylim = (xguess-dguess, xguess+dguess, yguess - dguess, yguess + dguess)
+        rguess = 400. / rebin#np.sqrt(imcolor[hicol].size / np.pi)
+        print(xguess*rebin, yguess*rebin, rguess*rebin)
 
-    import matplotlib.pyplot as plt
-    plt.imshow(imcolor)
-    plt.colorbar()
-    plt.plot([xguess], [yguess], 'o')
-    plt.show()
-    sampler = emcee.EnsembleSampler(nwalkers, nparams, lnprob, \
-        args=[imcolor, imluminmask, x, y, xylim], threads=Nthreads)
+        import matplotlib.pyplot as plt
+        plt.clf()
+        plt.imshow(imcolor)
+        plt.colorbar()
+        plt.plot([xguess], [yguess], 'o')
+        plt.title('Initialization')
+        plt.savefig(whalenum + 'colorclass.png')
+        #plt.show()
+        sampler = emcee.EnsembleSampler(nwalkers, nparams, lnprob, \
+            args=[imcolor, imluminmask, x, y, xylim], threads=Nthreads)
 
 
-    # initialize with rectangles located within the inner quadrant
-    ylength, xlength = diffim.shape
-    #print(ylength, xlength)
-    fluxinit = np.random.uniform(np.abs(colorthresh), np.abs(colorthresh), nwalkers)
-    sizeinit = np.random.uniform(0.8*rguess, 1.5*rguess, nwalkers)
-    #sizeinit[::2] *= -1
-    #np.random.shuffle(sizeinit)
-    #heightinit = np.random.uniform(100, 700, nwalkers)
-    xinit = np.random.uniform(xguess-dguess, xguess+dguess, nwalkers)
-    yinit = np.random.uniform(yguess-dguess, yguess+dguess, nwalkers)
-    arinit = np.random.uniform(0.2, 0.5, nwalkers)
-    phiinit = np.random.uniform(0, 180, nwalkers)
-    #phiinit[::2] *= -1
-    #np.random.shuffle(phiinit)
-    #pzero = np.array([xinit, yinit, widthinit, heightinit, fluxinit]).transpose()
-    pzero = np.array([fluxinit, sizeinit, xinit, yinit, arinit, \
-            phiinit]).transpose()
+        # initialize with rectangles located within the inner quadrant
+        ylength, xlength = diffim.shape
+        #print(ylength, xlength)
+        fluxinit = np.random.uniform(np.abs(colorthresh), np.abs(colorthresh), nwalkers)
+        sizeinit = np.random.uniform(0.8*rguess, 1.5*rguess, nwalkers)
+        #sizeinit[::2] *= -1
+        #np.random.shuffle(sizeinit)
+        #heightinit = np.random.uniform(100, 700, nwalkers)
+        xinit = np.random.uniform(xguess-dguess, xguess+dguess, nwalkers)
+        yinit = np.random.uniform(yguess-dguess, yguess+dguess, nwalkers)
+        arinit = np.random.uniform(0.2, 0.5, nwalkers)
+        phiinit = np.random.uniform(0, 180, nwalkers)
+        #phiinit[::2] *= -1
+        #np.random.shuffle(phiinit)
+        #pzero = np.array([xinit, yinit, widthinit, heightinit, fluxinit]).transpose()
+        pzero = np.array([fluxinit, sizeinit, xinit, yinit, arinit, \
+                phiinit]).transpose()
 
-    currenttime = time.time()
-
-    cols = ['lnprob', 'fluxinit', 'size', 'xcenter', 'ycenter', \
-            'aspect_ratio', 'rotation_angle']
-    dfdict = {'lnprob': [], 'xcenter': [], 'ycenter': [], 'size': [], 
-            'aspect_ratio': [], 'fluxinit': [], 'rotation_angle': []}
-    dfposterior = pd.DataFrame(dfdict)
-
-    # pos is the position of the sampler
-    # prob the ln probability
-    # state the random number generator state
-    # amp the metadata 'blobs' associated with the current position
-    for pos, prob, state in sampler.sample(pzero, iterations=100):
-
-        print("Mean acceptance fraction: {:5.3f}\n".
-                format(np.mean(sampler.acceptance_fraction)), 
-                "Mean lnprob and Max lnprob values: {:8.2f} {:8.2f}\n".
-                format(np.mean(prob), np.max(prob)),
-                #"\nModel parameters: {:f} {:f} {:f} {:f}".
-                #format(np.mean(pos, axis=0)),
-                "\nTime to run previous set of walkers (seconds): {:6.3f}".
-                format(time.time() - currenttime))
         currenttime = time.time()
-        #ff.write(str(prob))
-        superpos = np.zeros((1, 1 + nparams,))
 
-        for wi in range(nwalkers):
-            superpos[0, 0] = prob[wi]
-            superpos[0, 1:nparams + 1] = pos[wi]
-            dfsuperpos = pd.DataFrame(superpos)
-            dfsuperpos.columns = cols
-            dfposterior = dfposterior.append(dfsuperpos)
+        cols = ['lnprob', 'fluxinit', 'size', 'xcenter', 'ycenter', \
+                'aspect_ratio', 'rotation_angle']
+        dfdict = {'lnprob': [], 'xcenter': [], 'ycenter': [], 'size': [], 
+                'aspect_ratio': [], 'fluxinit': [], 'rotation_angle': []}
+        dfposterior = pd.DataFrame(dfdict)
+
+        # pos is the position of the sampler
+        # prob the ln probability
+        # state the random number generator state
+        # amp the metadata 'blobs' associated with the current position
+        for pos, prob, state in sampler.sample(pzero, iterations=100):
+
+            print("Mean acceptance fraction: {:5.3f}\n".
+                    format(np.mean(sampler.acceptance_fraction)), 
+                    "Mean lnprob and Max lnprob values: {:8.2f} {:8.2f}\n".
+                    format(np.mean(prob), np.max(prob)),
+                    #"\nModel parameters: {:f} {:f} {:f} {:f}".
+                    #format(np.mean(pos, axis=0)),
+                    "\nTime to run previous set of walkers (seconds): {:6.3f}".
+                    format(time.time() - currenttime))
+            currenttime = time.time()
+            #ff.write(str(prob))
+            superpos = np.zeros((1, 1 + nparams,))
+
+            for wi in range(nwalkers):
+                superpos[0, 0] = prob[wi]
+                superpos[0, 1:nparams + 1] = pos[wi]
+                dfsuperpos = pd.DataFrame(superpos)
+                dfsuperpos.columns = cols
+                dfposterior = dfposterior.append(dfsuperpos)
         dfposterior.to_csv('posteriorpdf_' + whalenum + '.csv')
+    os.chdir(cwd)
 

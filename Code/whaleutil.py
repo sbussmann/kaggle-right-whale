@@ -110,9 +110,10 @@ def colorlumin(im):
     #plt.colorbar()
     #plt.show()
     hicol = imcolor >= colorthresh
-    imcolor[hicol] = np.abs(colorthresh)
     locol = imcolor < colorthresh
-    imcolor[locol] = colorthresh - 10
+    imcolor[hicol] = 10#np.abs(colorthresh)
+    #locol = imcolor < colorthresh
+    imcolor[locol] = 0
     #plt.imshow(imcolor)
     #plt.colorbar()
     #plt.show()

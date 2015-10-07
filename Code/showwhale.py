@@ -31,17 +31,19 @@ def gini(list_of_values):
 cwd = os.getcwd()
 datadir = '../../BigData/kaggle-right-whale/right_whale_hunt/imgs/'
 whaledirs = glob(datadir + 'whale_*')
-whaledirs = whaledirs[0:7]
+whaledirs = whaledirs[0:1]
 
 for whaledir in whaledirs:
 
     print(whaledir)
     os.chdir(whaledir)
     imageids = glob('w_*.jpg')
-    for imageid in imageids:
+    for imageid in imageids[0:2]:
+        if imageid == 'w_3781.jpg':
+            continue
         print(imageid)
         imagenum = os.path.splitext(imageid)[0]
-        df = pd.read_csv('posteriorpdf_' + imagenum + '.csv')
+        df = pd.read_csv('posteriorpdf_rebin_' + imagenum + '.csv')
 
         bestfitloc = df['lnprob'] == df['lnprob'].max()
 
@@ -56,7 +58,7 @@ for whaledir in whaledirs:
                 'aspect_ratio', 'rotation_angle']
         par = bestfit[parcols]
 
-        binned = 4
+        binned = 8
 
         par['size'] *= binned
         par['xcenter'] *= binned
@@ -79,7 +81,9 @@ for whaledir in whaledirs:
         #print(nx, ny)
         xvec = np.arange(nx)
         yvec = np.arange(ny)
-        x, y = np.meshgrid(yvec, xvec)
+        x, y = np.meshgrid(xvec, yvec)
+        #plt.imshow(x)
+        #plt.show()
 
         print(parvalues)
 
@@ -148,6 +152,8 @@ for whaledir in whaledirs:
         diffim = 2 * im[:, :, 0] - im[:, :, 1] - im[:, :, 2]
         #plt.clf()
         imcolor, imlumin, colorthresh = colorlumin(im)
+        if colorthresh == 0:
+            continue
         plt.clf()
         plt.imshow(imcolor)
         plt.contour(whale_model)

@@ -20,6 +20,16 @@ ntrain = len(trainlocs)
 trainlocs = glob(datadir + 'whale_*/*colorclass*png')
 ntrain_processed = len(trainlocs)
 
+# get the fraction of processed images in the training set
+ftrain_processed = np.float(ntrain_processed) / ntrain
+
+# get the number of headshot images in the training set
+trainlocs = glob(datadir + 'whale_*/*headw*png')
+ntrain_head = len(trainlocs)
+
+# get the fraction of headshot images in the training set
+ftrain_head = np.float(ntrain_head) / ntrain
+
 # get the number of images in the test set
 trainlocs = glob(datadir + 'w_*jpg')
 ntest = len(trainlocs)
@@ -28,10 +38,19 @@ ntest = len(trainlocs)
 trainlocs = glob(datadir + '*colorclass*png')
 ntest_processed = len(trainlocs)
 
-print('Training set statistics')
-print('{} {} {:.3f}'.format(ntrain, ntrain_processed,
-    np.float(ntrain_processed)/ntrain))
+ftest_processed = np.float(ntest_processed) / ntest
 
-print('Test set statistics')
-print('{} {} {:.3f}'.format(ntest, ntest_processed,
-    np.float(ntest_processed)/ntest))
+# get the number of headshofts in the test set
+trainlocs = glob(datadir + '*headw*png')
+ntest_head = len(trainlocs)
+
+# get the fraction of headshofts in the test set
+ftest_head = np.float(len(trainlocs)) / ntest
+
+print('Training set statistics: Ntotal Nheading fheading Nhead fhead')
+print('{} {} {:.3f} {:.3f} {:.3f}'.format(ntrain, ntrain_processed,
+    ftrain_processed, ntrain_head, ftrain_head))
+
+print('Test set heading statistics')
+print('{} {} {:.3f} {} {:.3f}'.format(ntest, ntest_processed,
+    ftest_processed, ntest_head, ftest_head))

@@ -30,15 +30,15 @@ def gini(list_of_values):
 
 cwd = os.getcwd()
 datadir = '../../BigData/kaggle-right-whale/right_whale_hunt/imgs/'
-whaledirs = glob(datadir + 'whale_*')
-whaledirs = whaledirs[0:1]
+whaledirs = glob(datadir)# + 'whale_*')
+whaledirs = whaledirs[0:]
 
 for whaledir in whaledirs:
 
     print(whaledir)
     os.chdir(whaledir)
     imageids = glob('w_*.jpg')
-    for imageid in imageids[1:]:
+    for imageid in imageids[:]:
         #if imageid == 'w_3781.jpg':
         #    continue
         print(imageid)
@@ -164,6 +164,7 @@ for whaledir in whaledirs:
         plt.plot([xhead2], [yhead2], 'o')
 
         plt.savefig('whalemodel_' + imagenum + '.png')
+        plt.close()
         #imluminmask = imlumin < 0.8
         #imdiff = imcolor - whale_model
         #print(imdiff[imluminmask].sum())
@@ -187,9 +188,11 @@ for whaledir in whaledirs:
         #plt.savefig('whalelumin' + imageid + '.png')
 
         plt.clf()
-        nheads = 16
+        nheads = 2
         nrows = int(np.sqrt(nheads))
-        f, axarr = plt.subplots(nrows, nrows)
+        f, axarr = plt.subplots(1, nheads)
+        if axarr.ndim == 1:
+            axarr = axarr.reshape(1, len(axarr))
 
         xheads = np.linspace(xhead1, xhead2, nheads)
 
@@ -206,9 +209,15 @@ for whaledir in whaledirs:
         headq = 0.15
         flux = 5
         maxasymm = 0
+        col = 0
+        besti = 0
+        bestx = xheads[besti]
+        besty = yheads[besti]
         for i in range(len(xheads)):
 
-            if i % nrows == 0:
+            if nrows == 1:
+                row = 0
+            elif i % nrows == 0:
                 row += 1
                 col = 0
             y1 = yheads[i] - headradius
@@ -265,6 +274,9 @@ for whaledir in whaledirs:
         if x2 > nx: x2 = nx 
         if y1 < 0: y1 = 0 
         if y2 > ny: y2 = ny 
+        if x2 < 0 or x1 > nx or y2 < 0 or y1 > ny:
+            print("This failed")
+            continue
         imhead = whaleutil.extract_head(imdiff, x1, x2, y1, y2, phi0)
         imhead -= np.median(imhead)
         #plt.clf()
@@ -272,6 +284,8 @@ for whaledir in whaledirs:
         #plt.colorbar()
         #plt.show()
         maxmark = 0
+        xmark = nxhead / 2
+        ymark = nyhead / 2
         for ix in range(nxhead/2, nxhead/4*3):
             for iy in range(nyhead/4, nyhead/4*3):
                 #par = [flux, headsize, ix, iy, headq, phi0]
@@ -292,8 +306,9 @@ for whaledir in whaledirs:
                 #ymarks.append(iy)
 
         fig = plt.gcf()
-        fig.set_size_inches(14.5, 10.5)
+        fig.set_size_inches(6.5, 4.0)
         plt.savefig('whalecutscolor01' + imagenum + '.png')
+        plt.close()
 
         print(besti, xmark, ymark)
         y1 = besty + ymark - nyhead / 2 - headradius
@@ -310,6 +325,7 @@ for whaledir in whaledirs:
         imshow(imhead)
         imsave('whalehead' + imageid, imhead)
         plt.savefig('whalehead' + imagenum + '.png')
+        plt.close()
 
     os.chdir(cwd)
 import pdb; pdb.set_trace()

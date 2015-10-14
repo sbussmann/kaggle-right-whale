@@ -137,4 +137,4 @@ def extract_head(im, x1, x2, y1, y2, phi0):
     return rotate(im[y1:y2, x1:x2], phi0)
 
 def extract_asymm(im):
-    return(im - rotate(im, 180))
+    return im - im[:,::-1]

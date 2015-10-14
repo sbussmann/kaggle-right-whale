@@ -109,7 +109,7 @@ rebin = 16.0
 
 cwd = os.getcwd()
 datadir = '../../BigData/kaggle-right-whale/right_whale_hunt/imgs/'
-whaledirs = glob(datadir + 'whale_*')
+whaledirs = glob(datadir)
 whaledirs = whaledirs
 for whaledir in whaledirs:
     os.chdir(whaledir)

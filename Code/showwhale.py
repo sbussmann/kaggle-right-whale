@@ -5,6 +5,7 @@ Inspect results of MCMC simulation.
 """
 
 import pandas as pd
+import matplotlib
 from skimage.io import imread, imshow, imsave
 import numpy as np
 from whaleutil import whale_2d, xy_rotate, colorlumin
@@ -13,8 +14,12 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 #import whaleutil
+#from skimage.transform import resize
 import os
 from glob import glob
+from skimage.filters import threshold_otsu
+
+matplotlib.rcParams['font.size'] = 9
 
 
 def gini(list_of_values):
@@ -30,7 +35,7 @@ def gini(list_of_values):
 
 cwd = os.getcwd()
 datadir = '../../BigData/kaggle-right-whale/right_whale_hunt/imgs/'
-whaledirs = glob(datadir)# + 'whale_*')
+whaledirs = glob(datadir + 'whale_*')
 whaledirs = whaledirs[0:]
 
 for whaledir in whaledirs:
@@ -60,9 +65,9 @@ for whaledir in whaledirs:
 
         binned = 16
 
-        par['size'] *= binned
-        par['xcenter'] *= binned
-        par['ycenter'] *= binned
+        par.loc[:, ('size')] *= binned
+        par.loc[:, ('xcenter')] *= binned
+        par.loc[:, ('ycenter')] *= binned
         parvalues = par.values[0]
 
         xcenter = par['xcenter'].values[0]
@@ -85,7 +90,7 @@ for whaledir in whaledirs:
         #plt.imshow(x)
         #plt.show()
 
-        print(parvalues)
+        #print(parvalues)
 
         whale_model = whale_2d(x, y, parvalues)
 
@@ -97,14 +102,14 @@ for whaledir in whaledirs:
         b0 = a0 * par['aspect_ratio'].values[0]
         x0 = par['xcenter'].values[0]
         y0 = par['ycenter'].values[0]
-        xhead, yhead = xy_rotate(a0, 0, 0, 0, phi0)
+        xhead, yhead = xy_rotate(2.0*a0, 0, 0, 0, phi0)
         xhead *= -1
         xhead += x0
         yhead += y0
         xhead1 = xhead
         yhead1 = yhead
         headcent = (yhead, xhead)
-        print(headcent)
+        #print(headcent)
         headradius = 256
         y1 = yhead - headradius
         y2 = yhead + headradius
@@ -119,7 +124,7 @@ for whaledir in whaledirs:
             imhead = im[y1:y2, x1:x2, :]
             #imsave('whalehead_' + imageid + '.png', imhead)
 
-        xhead, yhead = xy_rotate(-a0, -0, 0, 0, phi0)
+        xhead, yhead = xy_rotate(-2.0*a0, -0, 0, 0, phi0)
         xhead *= -1
         xhead += x0
         yhead += y0
@@ -160,8 +165,10 @@ for whaledir in whaledirs:
         plt.contour(whale_model)
         plt.colorbar()
 
-        plt.plot([xhead1], [yhead1], 'o')
-        plt.plot([xhead2], [yhead2], 'o')
+        nheads = 25
+        xheads = np.linspace(xhead1, xhead2, nheads)
+        yheads = np.linspace(yhead1, yhead2, nheads)
+        plt.plot(xheads, yheads, 'o')
 
         plt.savefig('whalemodel_' + imagenum + '.png')
         plt.close()
@@ -188,15 +195,11 @@ for whaledir in whaledirs:
         #plt.savefig('whalelumin' + imageid + '.png')
 
         plt.clf()
-        nheads = 2
         nrows = int(np.sqrt(nheads))
-        f, axarr = plt.subplots(1, nheads)
+        f, axarr = plt.subplots(nrows, nrows)
         if axarr.ndim == 1:
             axarr = axarr.reshape(1, len(axarr))
 
-        xheads = np.linspace(xhead1, xhead2, nheads)
-
-        yheads = np.linspace(yhead1, yhead2, nheads)
         row = -1
         imdiff = im[:, :, 0] - im[:, :, 1]
         mincol01 = imdiff.max()
@@ -279,38 +282,46 @@ for whaledir in whaledirs:
             continue
         imhead = whaleutil.extract_head(imdiff, x1, x2, y1, y2, phi0)
         imhead -= np.median(imhead)
+        thresh = threshold_otsu(imhead)
+        binary = imhead > thresh
+        xvec = np.arange(nxhead)
+        yvec = np.arange(nyhead)
+        x, y = np.meshgrid(xvec, yvec)
+        xmark = x[binary].mean()
+        ymark = y[binary].mean()
+
         #plt.clf()
         #plt.imshow(imhead)
         #plt.colorbar()
         #plt.show()
         maxmark = 0
-        xmark = nxhead / 2
-        ymark = nyhead / 2
-        for ix in range(nxhead/2, nxhead/4*3):
-            for iy in range(nyhead/4, nyhead/4*3):
-                #par = [flux, headsize, ix, iy, headq, phi0]
-                #whale_model = whaleutil.whale_2d(xmatrix, ymatrix, par)
-                #headmark = whale_model == flux
-                x1 = ix - 50
-                x2 = ix + 50
-                y1 = iy - 15
-                y2 = iy + 15
-                imheadsum = imhead[y1:y2, x1:x2].sum()
-                if imheadsum > maxmark:
-                    maxmark = imheadsum
-                    xmark = ix
-                    ymark = iy
-                    #print(ix, iy, maxmark)
-                #summedmarks.append(imheadsum)
-                #xmarks.append(ix)
-                #ymarks.append(iy)
+        #xmark = nxhead / 2
+        #ymark = nyhead / 2
+        #for ix in range(nxhead/2, nxhead/4*3):
+        #    for iy in range(nyhead/4, nyhead/4*3):
+        #        #par = [flux, headsize, ix, iy, headq, phi0]
+        #        #whale_model = whaleutil.whale_2d(xmatrix, ymatrix, par)
+        #        #headmark = whale_model == flux
+        #        x1 = ix - 50
+        #        x2 = ix + 50
+        #        y1 = iy - 15
+        #        y2 = iy + 15
+        #        imheadsum = imhead[y1:y2, x1:x2].sum()
+        #        if imheadsum > maxmark:
+        #            maxmark = imheadsum
+        #            xmark = ix
+        #            ymark = iy
+        #            #print(ix, iy, maxmark)
+        #        #summedmarks.append(imheadsum)
+        #        #xmarks.append(ix)
+        #        #ymarks.append(iy)
 
         fig = plt.gcf()
-        fig.set_size_inches(6.5, 4.0)
+        fig.set_size_inches(12.5, 12.0)
         plt.savefig('whalecutscolor01' + imagenum + '.png')
         plt.close()
 
-        print(besti, xmark, ymark)
+        #print(besti, xmark, ymark)
         y1 = besty + ymark - nyhead / 2 - headradius
         y2 = besty + ymark - nyhead / 2 + headradius
         x1 = bestx + xmark - nxhead / 2 - headradius
@@ -320,10 +331,15 @@ for whaledir in whaledirs:
         if y1 < 0: y1 = 0 
         if y2 > ny: y2 = ny 
         imhead = im[y1:y2, x1:x2, :]
-        imhead = imhead.astype('uint8')
+        imheadtrim = imhead#np.zeros((64, 64, 3))
+        for channel in range(3):
+            imdiff = im[:, :, channel]
+            imhead = whaleutil.extract_head(imdiff, x1, x2, y1, y2, phi0)
+            imheadtrim[:, :, channel] = imhead
+        imheadtrim = imheadtrim.astype('uint8')
         plt.clf()
-        imshow(imhead)
-        imsave('whalehead' + imageid, imhead)
+        imshow(imheadtrim)
+        imsave('whalehead' + imageid, imheadtrim)
         plt.savefig('whalehead' + imagenum + '.png')
         plt.close()
 
